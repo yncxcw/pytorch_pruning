@@ -1,0 +1,11 @@
+[
+  "test_vgg.py::test_vgg11",
+  "test_vgg.py::test_vgg11[10-False-100-vgg13]",
+  "test_vgg.py::test_vgg11[10-False-100]",
+  "test_vgg.py::test_vgg11[10-True-100-vgg11]",
+  "test_vgg.py::test_vgg11[10-True-100]",
+  "test_vgg.py::test_vgg11[20-False-50-vgg19]",
+  "test_vgg.py::test_vgg11[20-False-50]",
+  "test_vgg.py::test_vgg11[20-True-50-vgg16]",
+  "test_vgg.py::test_vgg11[20-True-50]"
+]
