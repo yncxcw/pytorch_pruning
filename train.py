@@ -15,7 +15,8 @@ from model import registered_models
 class Trainer:
     """Trainer for training a model on a given dataset."""
 
-    def __init__(self, epochs: int, learning_rate: float, train_dataloader, eval_dataloader, model: torch.nn.Module, output: str):
+    def __init__(self, epochs: int, learning_rate: float, train_dataloader, eval_dataloader, model: torch.nn.Module,
+                 output: str, checkpoint: str):
         """
          Train on the dataset for 1 epoch.
 
@@ -25,12 +26,18 @@ class Trainer:
             train_dataloader (Dataloader): Dataloader for training dataset.
             eval_dataloader (Dataloader): Dataloader for eval dataset.
             model (torch.nn.Module): Model to train.
+            checkpoint (str): Path to a checkpoint file, used for evaluation.
         """
         self._epochs = epochs
         self._optimizer = optim.Adam(model.parameters(), lr=learning_rate)
         self._train_dataloader = train_dataloader
         self._eval_dataloader = eval_dataloader
         self._model = model
+
+        if checkpoint is not None:
+            self._model.load_state_dict(
+                torch.load(checkpoint)
+            )
         # Copy model weights to gpu
         self._model.cuda()
         self._loss_function = torch.nn.CrossEntropyLoss()
@@ -54,8 +61,6 @@ class Trainer:
     def train(self, epoch):
         """Train for one epoch."""
         for index, (images, labels) in enumerate(self._train_dataloader):
-            # print("labels:", labels)
-            # print("images:", images)
             labels = labels.cuda()
             images = images.cuda()
 
@@ -80,7 +85,9 @@ class Trainer:
     def evaluate(self, epoch):
         """Evaluate for one epoch."""
         test_loss = 0
-        correct = 0
+    
+        correct_1 = 0.0
+        correct_5 = 0.0
         for index, (images, labels) in enumerate(self._eval_dataloader):
             labels = labels.cuda()
             images = images.cuda()
@@ -91,18 +98,31 @@ class Trainer:
             # Accumuate the loss over the mini batch            
             test_loss += loss.item()
             # The model output is a tensor with shape (N, C)
-            # This choose the prediction over the batch dimension
-            _, pred = predictions.max(1)
-            correct += pred.eq(labels).sum()
+
+            # This choose the top5 prediction indices over the batch dimension
+            # pred is with shape (N, 5)
+            _, pred = predictions.topk(k=5, dim=1, largest=True, sorted=True)
+            
+            # Expand label from (N) -> (N, 5) 
+            labels = labels.view(labels.size(0), -1).expand_as(pred)
+
+            # With shape (N, 5), each line represents if each of the top 5 predicitons
+            # if a correct prediction
+            correct = pred.eq(labels)
+
+            correct_1 += correct[:, :1].sum()
+            correct_5 += correct[:, :5].sum()
 
         test_loss = test_loss / len(self._eval_dataloader.dataset)
-        accuracy = correct.float() / len(self._eval_dataloader.dataset)
-        print(f"Test for epoch {epoch} average loss: {test_loss} accuracy: {accuracy}")
+        top1_error = 1 - correct_1.float() / len(self._eval_dataloader.dataset)
+        top5_error = 1 - correct_1.float() / len(self._eval_dataloader.dataset)
+        print(f"Test for epoch {epoch} average loss: {test_loss} top5_error: {top5_error} top1_error: {top1_error}")
         
         self._writer.add_scalar("Test/Loss", test_loss, epoch)
-        self._writer.add_scalar("Test/Accuracy", accuracy, epoch)
+        self._writer.add_scalar("Test/top5_error", top5_error, epoch)
+        self._writer.add_scalar("Test/top1_error", top1_error, epoch)
         
-        return accuracy
+        return 1 - top1_error
 
     def train_loop(self):
         best_accuracy = 0
@@ -135,7 +155,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=128, help="Batch size to train the model")
     parser.add_argument("--learning_rate", type=float, default=0.2, help="Learning rate")
     parser.add_argument("--epochs", type=int, default=200, help="Number of epochs to train")
-    parser.add_argument("--eval_model", type=str, help="Path to the eval model")
+    parser.add_argument("--checkpoint", type=str, help="Path to the eval model")
     args = parser.parse_args()
 
     if not os.path.exists(args.dataset_path):
@@ -160,11 +180,12 @@ if __name__ == "__main__":
         train_dataloader=train_dataloader,
         eval_dataloader=eval_dataloader,
         model=model,
-        output=args.output, 
+        output=args.output,
+        checkpoint=args.checkpoint,
     )
 
-    if args.eval_model is not None:
-        trainer.eval()
+    if args.checkpoint is not None:
+        trainer.evaluate(0)
     else:
         trainer.train_loop()
 
