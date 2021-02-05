@@ -102,7 +102,6 @@ class Trainer:
             # This choose the top5 prediction indices over the batch dimension
             # pred is with shape (N, 5)
             _, pred = predictions.topk(k=5, dim=1, largest=True, sorted=True)
-            
             # Expand label from (N) -> (N, 5) 
             labels = labels.view(labels.size(0), -1).expand_as(pred)
 

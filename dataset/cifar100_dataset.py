@@ -1,18 +1,17 @@
 """Training dataset and validation dataset."""
 
 import os
+from typing import Any, Tuple
 import sys
 
+import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
 import pickle
 import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
-CIFAR_CHANNEL = 3
-CIFAR_WIDTH = 32
-CIFAR_HEIGHT = 32
-CIFAR_SIZE = CIFAR_WIDTH * CIFAR_HEIGHT
  
 class Cifar100Dataset(Dataset):
     """Pytorch dataset wrapping around CIFAR100."""
@@ -21,25 +20,39 @@ class Cifar100Dataset(Dataset):
         if path is None:
             raise ValueError("Path to the dataset can't be empty.")
 
+        self._images = None
+        self._labels = []
         # Chekcing https://www.cs.toronto.edu/~kriz/cifar.html for details
-        with open(os.path.join(path, type), "rb") as dataset:
+        with open(os.path.join(path, type), "rb") as f:
             # dict contains `data` and `labels`
-            self._dataset = pickle.load(dataset, encoding="bytes")
+            self._dataset = pickle.load(f, encoding="latin1")
+            print(self._dataset.keys())
+            if "labels" in self._dataset:
+                self._labels.extend(self._dataset["labels"])
+            else:
+                self._labels.extend(self._dataset["fine_labels"])
+            
+            # Image with shape NCHW
+            self._images = self._dataset["data"].reshape(-1, 3, 32, 32)
+            # Transpose to NCHW
+            self._images = self._images.transpose((0, 2, 3, 1))
+        
+        meta_file = os.path.join(path, "meta")
+        # Load meta file
+        with open(meta_file, "rb") as f:
+            meta = pickle.load(f, encoding="latin1")
+            classes = meta["fine_label_names"]
+            self._class_to_idx = {_class: i for i, _class in enumerate(classes)}
 
         self._transform = transform
 
-    def __len__(self):
-        return len(self._dataset["fine_labels".encode()])
+    def __len__(self) -> int:
+        return len(self._images)
 
-    def __getitem__(self, index):
-        label = self._dataset["fine_labels".encode()][index]
-        image = self._dataset["data".encode()][index]
-
-        r = image[: CIFAR_SIZE].reshape(CIFAR_HEIGHT, CIFAR_WIDTH)
-        g = image[CIFAR_SIZE: 2*CIFAR_SIZE].reshape(CIFAR_HEIGHT, CIFAR_WIDTH)
-        b = image[2*CIFAR_SIZE: ].reshape(CIFAR_HEIGHT, CIFAR_WIDTH)
-        image = np.dstack((r, g, b))
-
+    def __getitem__(self, index:int) -> Tuple[Any, Any]:
+        image, label = self._images[index], self._labels[index]
+        
+        image = Image.fromarray(image)
         if self._transform is not None:
             image = self._transform(image)
 
@@ -69,16 +82,16 @@ def cifar100_dataloader_builder(path:str, type:str, batch_size:int, shuffle:bool
 
     if type == "train":
         transform = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(15),
+            # transforms.ToPILImage(),
+            # transforms.RandomCrop(32, padding=4),
+            # transforms.RandomHorizontalFlip(),
+            # transforms.RandomRotation(15),
             # ToTensor alsos normalize the image to [0, 1.0).
             transforms.ToTensor(),
-            transforms.Normalize(
-                CIFAR100_TRAIN_MEAN,
-                CIFAR100_TRAIN_STD,
-            )
+            # transforms.Normalize(
+            #     CIFAR100_TRAIN_MEAN,
+            #     CIFAR100_TRAIN_STD,
+            # )
         ])
         dataset = Cifar100TrainDataset(
             path=path,
@@ -87,10 +100,10 @@ def cifar100_dataloader_builder(path:str, type:str, batch_size:int, shuffle:bool
     elif type == "test":
         transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(
-                CIFAR100_TRAIN_MEAN,
-                CIFAR100_TRAIN_STD,
-            )
+            # transforms.Normalize(
+            #     CIFAR100_TRAIN_MEAN,
+            #     CIFAR100_TRAIN_STD,
+            # )
         ])
         dataset = Cifar100TestDataset(
             path=path,
