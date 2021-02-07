@@ -82,16 +82,15 @@ def cifar100_dataloader_builder(path:str, type:str, batch_size:int, shuffle:bool
 
     if type == "train":
         transform = transforms.Compose([
-            # transforms.ToPILImage(),
-            # transforms.RandomCrop(32, padding=4),
-            # transforms.RandomHorizontalFlip(),
-            # transforms.RandomRotation(15),
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(15),
             # ToTensor alsos normalize the image to [0, 1.0).
             transforms.ToTensor(),
-            # transforms.Normalize(
-            #     CIFAR100_TRAIN_MEAN,
-            #     CIFAR100_TRAIN_STD,
-            # )
+            transforms.Normalize(
+                CIFAR100_TRAIN_MEAN,
+                CIFAR100_TRAIN_STD,
+            )
         ])
         dataset = Cifar100TrainDataset(
             path=path,
@@ -100,10 +99,10 @@ def cifar100_dataloader_builder(path:str, type:str, batch_size:int, shuffle:bool
     elif type == "test":
         transform = transforms.Compose([
             transforms.ToTensor(),
-            # transforms.Normalize(
-            #     CIFAR100_TRAIN_MEAN,
-            #     CIFAR100_TRAIN_STD,
-            # )
+            transforms.Normalize(
+                CIFAR100_TRAIN_MEAN,
+                CIFAR100_TRAIN_STD,
+            )
         ])
         dataset = Cifar100TestDataset(
             path=path,

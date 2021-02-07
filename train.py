@@ -29,7 +29,6 @@ class Trainer:
             checkpoint (str): Path to a checkpoint file, used for evaluation.
         """
         self._epochs = epochs
-        self._optimizer = optim.Adam(model.parameters(), lr=learning_rate)
         self._train_dataloader = train_dataloader
         self._eval_dataloader = eval_dataloader
         self._model = model
@@ -40,12 +39,15 @@ class Trainer:
             )
         # Copy model weights to gpu
         self._model.cuda()
+        self._optimizer = optim.SGD(model.parameters(), lr=learning_rate,  momentum=0.9, weight_decay=5e-4)
+        # TODO Why adam is not working
+        # self._optimizer = optim.Adam(model.parameters(), lr=learning_rate)
         self._loss_function = torch.nn.CrossEntropyLoss()
         self._lr_scheduler = optim.lr_scheduler.MultiStepLR(
             self._optimizer,
             # TODO: Hardcode for 200 epochs, fix this.
             milestones=[60, 120, 180],
-            gamma=0.5,
+            gamma=0.2,
             verbose=True,
         )
         self._log_dir = os.path.join(
@@ -60,6 +62,9 @@ class Trainer:
 
     def train(self, epoch):
         """Train for one epoch."""
+        # This has effects on layers like batchnorm or dropout.
+        self._model.train()
+        print(f"Start training for {len(self._train_dataloader)}")
         for index, (images, labels) in enumerate(self._train_dataloader):
             labels = labels.cuda()
             images = images.cuda()
@@ -73,9 +78,8 @@ class Trainer:
 
             n_step = epoch * len(self._train_dataloader) + index
             self._writer.add_scalar("Train/Loss", loss.item(), n_step)
-            self._writer.add_scalar("Train/LR", self._optimizer.param_groups[0]["lr"])
-
-            print(f"Training {n_step}/{self._epochs * len(self._train_dataloader)} Loss: {loss.item()}")
+            self._writer.add_scalar("Train/LR", self._optimizer.param_groups[0]["lr"], n_step)
+            # print(f"Training {n_step}/{self._epochs * len(self._train_dataloader)} Loss: {loss.item()}")
 
         for name, param in model.named_parameters():
             layer, attr = os.path.splitext(name)
@@ -83,9 +87,11 @@ class Trainer:
 
     @torch.no_grad()
     def evaluate(self, epoch):
-        """Evaluate for one epoch."""
-        test_loss = 0
-    
+        """Evaluate for one epoch.""" 
+        print(f"Start validation for {len(self._eval_dataloader)}")
+        # This has effects on layers like dropout and batchnorm
+        self._model.eval()
+        test_loss = 0 
         correct_1 = 0.0
         correct_5 = 0.0
         for index, (images, labels) in enumerate(self._eval_dataloader):
@@ -114,7 +120,7 @@ class Trainer:
 
         test_loss = test_loss / len(self._eval_dataloader.dataset)
         top1_error = 1 - correct_1.float() / len(self._eval_dataloader.dataset)
-        top5_error = 1 - correct_1.float() / len(self._eval_dataloader.dataset)
+        top5_error = 1 - correct_5.float() / len(self._eval_dataloader.dataset)
         print(f"Test for epoch {epoch} average loss: {test_loss} top5_error: {top5_error} top1_error: {top1_error}")
         
         self._writer.add_scalar("Test/Loss", test_loss, epoch)
@@ -152,7 +158,7 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, required=True, help="Model to train")
     parser.add_argument("--output", type=str, required=True, help="Output dir.")
     parser.add_argument("--batch_size", type=int, default=128, help="Batch size to train the model")
-    parser.add_argument("--learning_rate", type=float, default=0.2, help="Learning rate")
+    parser.add_argument("--learning_rate", type=float, default=0.1, help="Learning rate")
     parser.add_argument("--epochs", type=int, default=200, help="Number of epochs to train")
     parser.add_argument("--checkpoint", type=str, help="Path to the eval model")
     args = parser.parse_args()
