@@ -7,31 +7,33 @@
 namespace trtInference {
 
 //TODO implement this function
-size_t getElementSize(nvinfer11::DataType type) {
-    return 1
+size_t getElementSize(nvinfer1::DataType type) {
+    return 1;
 }
 
-template<typemane AllocFunc, typename FreeFunc>
+template<typename AllocFunc, typename FreeFunc>
 class Buffer {
 
     public:
-        Buffer(nvinfer1::DataType type = nvinfer1::DataType::kFloat)
+        Buffer(nvinfer1::DataType type = nvinfer1::DataType::kFLOAT)
             :_size(0)
             ,_capacity(0)
             ,_type(type)
-            ,_buffer(nullptr)
+            ,_buffer(nullptr){
+        
+        }
 
         Buffer(size_t size, nvinfer1::DataType type) {
             _size = size;
             _capacity = size;
             _type = type;
-            auto nbytes = this->nbytes()
+            auto nbytes = this->nbytes();
             if (!allocFun(&_buffer, nbytes)) {
-                throw std::bad_alloc()
+                throw std::bad_alloc();
             }
         }
 
-        Buffer(Buffer&& buffer):
+        Buffer(Buffer&& buffer)
             :_size(buffer._size)
             ,_capacity(buffer._capacity)
             ,_type(buffer._type)
@@ -39,7 +41,7 @@ class Buffer {
         {
             buffer._size = 0;
             buffer._capacity = 0;
-            buffer._type = nvinfer1::DataType::kFloat;
+            buffer._type = nvinfer1::DataType::kFLOAT;
             buffer._buffer = nullptr;
         }
 
@@ -75,13 +77,13 @@ class Buffer {
         }
 
         size_t nbytes() const {
-            return _size * trtInference::getElemementSize(_type);
+            return _size * trtInference::getElementSize(_type);
         }
 
         void resize(size_t size) {
             _size = size;
             if (size > _capacity) {
-                freeFn(_buffer);
+                freeFun(_buffer);
                 if (!allocFn(&_buffer, this->nbytes())) {
                     throw std::bad_alloc();
                 }
@@ -102,7 +104,7 @@ class Buffer {
         void* _buffer;
         AllocFunc allocFun;
         FreeFunc freeFun;
-} // class Buffer
+}; // class Buffer
 
 using GPUBuffer = Buffer<GPUAllocator, GPUFree>;
 using CPUBuffer = Buffer<CPUAllocator, CPUFree>;

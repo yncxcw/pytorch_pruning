@@ -2,12 +2,12 @@
 
 #include "include/buffer.h"
 
-#include "Nvinfer.h"
+#include "NvInfer.h"
 #include <cuda_runtime_api.h>
 
 int main() {
 
 
-    return 0
+    return 0;
 }
 
