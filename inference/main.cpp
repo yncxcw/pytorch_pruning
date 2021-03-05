@@ -1,6 +1,7 @@
 //Running the trt inference on an onnx model.
 
 #include "include/buffer.h"
+#include "include/inference.h"
 
 #include "NvInfer.h"
 #include <cuda_runtime_api.h>

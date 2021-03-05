@@ -12,6 +12,18 @@ link_directories(/usr/local/cuda/lib64)
 include_directories(/usr/include/x86_64-linux-gnu) 
 link_directories(/usr/lib/x86_64-linux-gnu)
 
+add_library(inference_lib inference.cpp)
+set(MAIN_DEP_LIBS
+    # TRT runtime 
+    nvinfer
+    # Onnx parser
+    nvonnxparser
+    inference_lib
+)
 
 add_executable(main main.cpp)
-target_link_libraries(main nvinfer)
+
+target_link_libraries(main
+    ${MAIN_DEP_LIBS}
+    -Wl,--unresolved-symbols=ignore-in-shared-libs
+)
