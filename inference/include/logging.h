@@ -507,10 +507,12 @@ inline LogStreamConsumer LOG_FATAL(const Logger& logger)
 
 } // anonymous namespace
 
-
-
-// Initialize gLogger;
-Logger gLogger;
+extern Logger gLogger;
+extern LogStreamConsumer gLogVerbose;
+extern LogStreamConsumer gLogInfo;
+extern LogStreamConsumer gLogWarning;
+extern LogStreamConsumer gLogError;
+extern LogStreamConsumer gLogFatal;
 
 } // namespace trtInference
 

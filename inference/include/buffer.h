@@ -1,15 +1,13 @@
 // Implementation of a GPU & CPU buffer
 #pragma once
-#include "NvInfer.h"
 
 #include "allocator.h"
+#include "common.h"
+
+#include "NvInfer.h"
+
 
 namespace trtInference {
-
-//TODO implement this function
-size_t getElementSize(nvinfer1::DataType type) {
-    return 1;
-}
 
 template<typename AllocFunc, typename FreeFunc>
 class Buffer {
@@ -77,7 +75,7 @@ class Buffer {
         }
 
         size_t nbytes() const {
-            return _size * trtInference::getElementSize(_type);
+            return _size * getElementSize(_type);
         }
 
         void resize(size_t size) {

@@ -4,12 +4,13 @@
 
 namespace trtInference {
 
-static Logger gLogger{Logger::Severity::kINFO};
-static LogStreamConsumer gLogVerbose{LOG_VERBOSE(gLogger)};
-static LogStreamConsumer gLogInfo{LOG_INFO(gLogger)};
-static LogStreamConsumer gLogWarning{LOG_WARN(gLogger)};
-static LogStreamConsumer gLogError{LOG_ERROR(gLogger)};
-static LogStreamConsumer gLogFatal{LOG_FATAL(gLogger)}; 
+//TODO(weich) Should these be declared as static ???
+Logger gLogger{Logger::Severity::kINFO};
+LogStreamConsumer gLogVerbose{LOG_VERBOSE(gLogger)};
+LogStreamConsumer gLogInfo{LOG_INFO(gLogger)};
+LogStreamConsumer gLogWarning{LOG_WARN(gLogger)};
+LogStreamConsumer gLogError{LOG_ERROR(gLogger)};
+LogStreamConsumer gLogFatal{LOG_FATAL(gLogger)}; 
 
 }
 

@@ -1,5 +1,6 @@
 #include "include/inference.h"
 
+#include "cuda_runtime_api.h"
 
 namespace trtInference {
 //! \breif build the network engine
@@ -40,17 +41,17 @@ bool ImageInference::build() {
         return false;
     }
 
-    assert(network->getNbInputs() == 1);
+    ASSERT(network->getNbInputs() == 1);
     inputDims = network->getInput(0)->getDimensions();
     // NCHW
-    assert(inputDims.nbDims == 4);
+    ASSERT(inputDims.nbDims == 4);
 
-    assert(network->getNbOutputs() == 1);
+    ASSERT(network->getNbOutputs() == 1);
     outputDims = network->getOutput(0)->getDimensions();
     // NC
-    assert(outputDims.nbDims == 2);
-
-
+    ASSERT(outputDims.nbDims == 2);
+    classes = outputDims.d[1];
+    is_built = true;
 }
 
 
@@ -66,7 +67,8 @@ bool ImageInference::constructNetWork(TRTUniquePtr<nvinfer1::IBuilder>& builder,
     if (!parsed) {
         return false;
     }
-   
+  
+    builder->setMaxBatchSize(param.max_batch_size); 
     // 1 << 20 = 16 MB 
     config->setMaxWorkspaceSize(1<<20);
     
@@ -82,12 +84,56 @@ bool ImageInference::constructNetWork(TRTUniquePtr<nvinfer1::IBuilder>& builder,
     return true;   
 }
 
-
-bool ImageInference::inference() {
-
-    // Code to random generate images
+//! \brief Running inference on input data and copy results back to output
+template<typename DType>
+bool ImageInference::inference(size_t batch_size, DType* input, DType* output) {
+    if(!is_built) {
+        return false;
+    }
     
+    auto context = TRTUniquePtr<nvinfer1::IExecutionContext>(engine->createExecutionContext());
+    if (!context) {
+        return false;
+    }
 
+    //The caller needs to make sure that strlen(input) == batch_size * C * H * W
+    size_t input_size  = batch_size * model_input_size(); 
+    // Output would be batch_size * C where C = num_classes
+    size_t output_size = batch_size * model_output_size();
+
+    //TODO (weich) Implement slab allocator
+    void* input_buffer; 
+    void* output_buffer;
+    CHECK_CUDA(cudaMalloc(&input_buffer, input_size*sizeof(DType))); 
+    CHECK_CUDA(cudaMalloc(&output_buffer, output_size*sizeof(DType)));
+    
+    //Create CUDA steam
+    //TODO (weich) Wrap CUDAsteam in class.
+    cudaStream_t stream;
+    CHECK_CUDA(cudaStreamCreate(&stream));
+
+    //DMA copy input data to device and run inference on the input, copy the output batch to the host
+    CHECK_CUDA(cudaMemcpyAsync(input_buffer, input, input_size, cudaMemcpyHostToDevice, stream));
+    void* buffers[2] = {input_buffer, output_buffer};
+    //TODO (weich) Add cuda event profiling
+    auto status = context->enqueue(batch_size, buffers, stream, /*cudaEvent_t*/ nullptr);
+    if (!status) {
+        return false;
+    }
+    CHECK_CUDA(cudaMemcpyAsync(output, output_buffer, output_size, cudaMemcpyDeviceToHost, stream));
+    cudaStreamSynchronize(stream);
+
+    //Release steam and buffers
+    cudaStreamDestroy(stream);
+    CHECK_CUDA(cudaFree(input_buffer));
+    CHECK_CUDA(cudaFree(output_buffer));
+
+    return true;
 }
+
+template bool ImageInference::inference<float>(size_t batch_size, float* input, float* output);
  
+template bool ImageInference::inference<double>(size_t batch_size, double* input, double* output);
+
+template bool ImageInference::inference<int>(size_t batch_size, int* input, int* output);
 }// end trtInference namespace

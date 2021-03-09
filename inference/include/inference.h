@@ -2,11 +2,12 @@
 #pragma once
 
 #include "logging.h"
-#include "buffer.h"
 #include "common.h"
 
 #include "NvInfer.h"
 #include "NvOnnxParser.h"
+
+#include <memory>
 
 namespace trtInference {
 
@@ -38,7 +39,31 @@ public:
     bool build();
 
     //! \Run inference
-    bool inference();
+    template<typename DType>
+    bool inference(size_t batch_size, DType* input, DType* output);
+
+    //! \Return input size as H*W*C
+    size_t model_input_size(){
+        ASSERT(!is_built);
+        auto ndims = inputDims.nbDims;
+        size_t size = 1;
+        for (int i=0; i<ndims; i++) {
+            size = size * inputDims.d[i];
+        }
+        return size;
+    }
+
+    //! \Return output size as C
+    size_t model_output_size() {
+        ASSERT(!is_built);
+        auto ndims = outputDims.nbDims;
+        size_t size = 1;
+        for (int i=0; i<ndims; i++) {
+            size = size * outputDims.d[i];
+        }
+        return size;
+
+    }
 
 private:
     trtInference::Param param;
@@ -46,8 +71,11 @@ private:
     nvinfer1::Dims inputDims;
     nvinfer1::Dims outputDims;
 
-    //Number of classes to classify
+    // Number of classes to classify
     size_t classes{0};
+
+    // Is the TRT engine buit successfuly
+    bool is_built{false};
 
     // TensorRT engine
     std::shared_ptr<nvinfer1::ICudaEngine> engine;

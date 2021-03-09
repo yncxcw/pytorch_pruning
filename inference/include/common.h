@@ -8,21 +8,34 @@
 #define ASSERT(condition)                                                     \
     do {                                                                      \
         if(!condition)  {                                                     \
-            std::cout << "Condition failed on" << #condition << std::endl;     \
+            std::cout << "Condition failed on" << #condition << std::endl;    \
             abort();                                                          \
         }                                                                     \
     } while(0)                                                                
+
+#define CHECK_CUDA(status)                                                    \
+    do {                                                                      \
+        if (status) {                                                         \
+            std::cout <<"Cuda failure: " << status << std::endl;              \
+            abort();                                                          \
+        }                                                                     \
+    } while(0)                                                                   
 
 
 namespace trtInference {
 
 struct Param {
-
-    int32_t batch_size{1};    // Number of images in a batch
-    int32_t dla_core{0};      // Specify the DLA core to run network on.
-    bool int8{false};         // Running inference in int8 mode.
-    bool fp16{false};         // Running inference in fp16 mode.
-    std::string onnx_file;    // Path to onnx model. 
+    Param(int32_t max_batch_size, bool int8, bool fp16, std::string onnx_file):
+        max_batch_size(max_batch_size),
+        int8(int8),
+        fp16(fp16),
+        onnx_file(onnx_file)
+    {
+    }
+    int32_t max_batch_size{1};    // Number of images in a batch
+    bool int8{false};             // Running inference in int8 mode.
+    bool fp16{false};             // Running inference in fp16 mode.
+    std::string onnx_file;        // Path to onnx model. 
 }; 
 
 
@@ -79,6 +92,19 @@ inline void setAllTensorScales(nvinfer1::INetworkDefinition* network, float inSc
             }
         }
     }
+}
+
+inline  size_t getElementSize(nvinfer1::DataType type) {
+    switch (type)
+    {
+        case nvinfer1::DataType::kINT32: return 4;
+        case nvinfer1::DataType::kFLOAT: return 4;
+        case nvinfer1::DataType::kHALF: return 2;
+        case nvinfer1::DataType::kBOOL:
+        case nvinfer1::DataType::kINT8: return 1;
+    }
+    throw std::runtime_error("Invalid DataType.");
+    return 0;
 }
 
 }
