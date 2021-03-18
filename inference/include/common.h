@@ -8,7 +8,7 @@
 #define ASSERT(condition)                                                     \
     do {                                                                      \
         if(!condition)  {                                                     \
-            std::cout << "Condition failed on" << #condition << std::endl;    \
+            std::cout << "Condition failed on " << #condition << std::endl;    \
             abort();                                                          \
         }                                                                     \
     } while(0)                                                                

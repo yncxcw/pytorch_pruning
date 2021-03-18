@@ -117,6 +117,4 @@ def cifar100_dataloader_builder(path:str, type:str, batch_size:int, shuffle:bool
         num_workers=num_workers,
         batch_size=batch_size,
     )
-    return dataloader
-    
-    
+    return dataloader 

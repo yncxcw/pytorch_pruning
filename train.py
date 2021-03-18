@@ -57,8 +57,8 @@ class Trainer:
         self._writer = SummaryWriter(log_dir=self._log_dir)
 
         # TODO: Currently hardcoded to cfar100 dataset.
-        tmp_tensor = torch.Tensor(1, 3, 32, 32).cuda()
-        self._writer.add_graph(self._model, tmp_tensor)
+        self._input_tensor = torch.zeros([1, 3, 32, 32], dtype=torch.float32).cuda()
+        self._writer.add_graph(self._model, self._input_tensor)
 
     def train(self, epoch):
         """Train for one epoch."""
@@ -142,10 +142,20 @@ class Trainer:
                 best_model = epoch
             # Save model for every 10 epoch
             if epoch % 10 == 0:
+                # Save to checkpoint
                 model_path = os.path.join(self._log_dir, "model-"+str(epoch))
                 print(f"Saving model for epoch {epoch}")
                 torch.save(self._model.state_dict(), model_path)
 
+                # Export to onnx model 
+                onnx_path = os.path.join(self._log_dir, "model-"+str(epoch)+".onnx")
+
+                torch.onnx.export(
+                    model=self._model,
+                    args=self._input_tensor,
+                    f=onnx_path,
+                    export_params=True
+                )
             self._lr_scheduler.step()
         print(f"Best model model-{best_model}")
           

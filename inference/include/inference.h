@@ -44,7 +44,7 @@ public:
 
     //! \Return input size as H*W*C
     size_t model_input_size(){
-        ASSERT(!is_built);
+        ASSERT(is_built);
         auto ndims = inputDims.nbDims;
         size_t size = 1;
         for (int i=0; i<ndims; i++) {
@@ -55,7 +55,7 @@ public:
 
     //! \Return output size as C
     size_t model_output_size() {
-        ASSERT(!is_built);
+        ASSERT(is_built);
         auto ndims = outputDims.nbDims;
         size_t size = 1;
         for (int i=0; i<ndims; i++) {

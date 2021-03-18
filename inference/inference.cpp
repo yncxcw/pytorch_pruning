@@ -2,42 +2,51 @@
 
 #include "cuda_runtime_api.h"
 
+#include <iostream>
+
+
 namespace trtInference {
 //! \breif build the network engine
 bool ImageInference::build() {
 
     auto builder = TRTUniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(trtInference::gLogger.getTRTLogger()));
     if (!builder) {
+        std::cout << "createInferBuilder failed.";        
         return false;
     }
 
     // Building INetwork objects in full dimensions mode with dynamic shape support 
     const auto explicitBatch = 1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
     auto network = TRTUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(explicitBatch));
-    if (!network) {
+    if (!network) { 
+        std::cout << "createNetworkV2 failed.";        
         return false;
     }
 
     auto config = TRTUniquePtr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
-    if (!config) {
+    if (!config) { 
+        std::cout << "createBuilder failed.";        
         return false;
     }
 
     auto parser
         = TRTUniquePtr<nvonnxparser::IParser>(nvonnxparser::createParser(*network, trtInference::gLogger.getTRTLogger()));
-    if (!parser) {
+    if (!parser) { 
+        std::cout << "createParser failed.";        
         return false;
     }
 
     auto constructed = constructNetWork(builder, network, config, parser);
-    if (!constructed) {
+    if (!constructed) { 
+        std::cout << "constructNetWork failed.";        
         return false;
     }
     
     engine = std::shared_ptr<nvinfer1::ICudaEngine>(
         builder->buildEngineWithConfig(*network, *config), trtInference::TRTDestroyer<nvinfer1::ICudaEngine>());
 
-    if(!engine) {
+    if(!engine) { 
+        std::cout << "buildEngineWithConfig failed.";        
         return false;
     }
 
@@ -52,6 +61,7 @@ bool ImageInference::build() {
     ASSERT(outputDims.nbDims == 2);
     classes = outputDims.d[1];
     is_built = true;
+    return true;
 }
 
 
@@ -88,11 +98,13 @@ bool ImageInference::constructNetWork(TRTUniquePtr<nvinfer1::IBuilder>& builder,
 template<typename DType>
 bool ImageInference::inference(size_t batch_size, DType* input, DType* output) {
     if(!is_built) {
+        std::cout << "Inference engine is not built" <<std::endl;
         return false;
     }
     
     auto context = TRTUniquePtr<nvinfer1::IExecutionContext>(engine->createExecutionContext());
     if (!context) {
+        std::cout << "createExecutionContext failed" << std::endl;
         return false;
     }
 
@@ -118,6 +130,7 @@ bool ImageInference::inference(size_t batch_size, DType* input, DType* output) {
     //TODO (weich) Add cuda event profiling
     auto status = context->enqueue(batch_size, buffers, stream, /*cudaEvent_t*/ nullptr);
     if (!status) {
+        std::cout << "context->enqueue fauld." << std::endl;
         return false;
     }
     CHECK_CUDA(cudaMemcpyAsync(output, output_buffer, output_size, cudaMemcpyDeviceToHost, stream));

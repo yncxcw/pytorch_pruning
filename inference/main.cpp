@@ -23,7 +23,7 @@ void image_inference_test(std::unique_ptr<trtInference::ImageInference>& image_i
 
 int main() {
 
-    trtInference::Param param(32, false, false, "");
+    trtInference::Param param(32, false, false, "/tmp/cifar_100_train/vgg19/2021-03-17-22-55-44/model-0.onnx");
     auto image_inference = std::make_unique<trtInference::ImageInference>(param);
     if(!image_inference->build()) {
         std::cout << "Image inference building is not successfull" << std::endl;
