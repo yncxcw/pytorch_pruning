@@ -19,7 +19,7 @@ class VGG(nn.Module):
 
     def __init__(self, config, batch_norm: bool=True, num_classes: int=100):
         """
-        Note: This model only supports cifar100 datasets!
+        Note: This model only supports cifar100 datasets.
         TODO: Support multiple datasets.
 
         Args:
@@ -48,6 +48,12 @@ class VGG(nn.Module):
 
     def name(self):
         return self._name
+
+    def input_shape(self):
+        """Input shape for model."""
+        # TODO(weich): Hardcoded for cifar100 dataset.
+        return [3, 32, 32]
+
 
 def _make_layers(config, batch_norm: bool=True) -> nn.Sequential:
     """

@@ -11,7 +11,7 @@ bool ImageInference::build() {
 
     auto builder = TRTUniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(trtInference::gLogger.getTRTLogger()));
     if (!builder) {
-        std::cout << "createInferBuilder failed.";        
+        std::cout << "createInferBuilder failed.";
         return false;
     }
 
@@ -19,26 +19,26 @@ bool ImageInference::build() {
     const auto explicitBatch = 1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
     auto network = TRTUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetworkV2(explicitBatch));
     if (!network) { 
-        std::cout << "createNetworkV2 failed.";        
+        std::cout << "createNetworkV2 failed.";     
         return false;
     }
 
     auto config = TRTUniquePtr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
     if (!config) { 
-        std::cout << "createBuilder failed.";        
+        std::cout << "createBuilder failed.";
         return false;
     }
 
     auto parser
         = TRTUniquePtr<nvonnxparser::IParser>(nvonnxparser::createParser(*network, trtInference::gLogger.getTRTLogger()));
     if (!parser) { 
-        std::cout << "createParser failed.";        
+        std::cout << "createParser failed.";
         return false;
     }
 
     auto constructed = constructNetWork(builder, network, config, parser);
     if (!constructed) { 
-        std::cout << "constructNetWork failed.";        
+        std::cout << "constructNetWork failed.";
         return false;
     }
     
@@ -46,7 +46,7 @@ bool ImageInference::build() {
         builder->buildEngineWithConfig(*network, *config), trtInference::TRTDestroyer<nvinfer1::ICudaEngine>());
 
     if(!engine) { 
-        std::cout << "buildEngineWithConfig failed.";        
+        std::cout << "buildEngineWithConfig failed.";
         return false;
     }
 
@@ -79,8 +79,8 @@ bool ImageInference::constructNetWork(TRTUniquePtr<nvinfer1::IBuilder>& builder,
     }
   
     builder->setMaxBatchSize(param.max_batch_size); 
-    // 1 << 20 = 16 MB 
-    config->setMaxWorkspaceSize(1<<20);
+    // 1 << 30 = 1G 
+    config->setMaxWorkspaceSize(1<<30);
     
     if (param.fp16) {
         config->setFlag(nvinfer1::BuilderFlag::kFP16);
@@ -96,16 +96,16 @@ bool ImageInference::constructNetWork(TRTUniquePtr<nvinfer1::IBuilder>& builder,
 
 //! \brief Running inference on input data and copy results back to output
 template<typename DType>
-bool ImageInference::inference(size_t batch_size, DType* input, DType* output) {
+float ImageInference::inference(size_t batch_size, DType* input, DType* output) {
     if(!is_built) {
         std::cout << "Inference engine is not built" <<std::endl;
-        return false;
+        return -1;
     }
     
     auto context = TRTUniquePtr<nvinfer1::IExecutionContext>(engine->createExecutionContext());
     if (!context) {
         std::cout << "createExecutionContext failed" << std::endl;
-        return false;
+        return -1;
     }
 
     //The caller needs to make sure that strlen(input) == batch_size * C * H * W
@@ -127,11 +127,22 @@ bool ImageInference::inference(size_t batch_size, DType* input, DType* output) {
     //DMA copy input data to device and run inference on the input, copy the output batch to the host
     CHECK_CUDA(cudaMemcpyAsync(input_buffer, input, input_size, cudaMemcpyHostToDevice, stream));
     void* buffers[2] = {input_buffer, output_buffer};
-    //TODO (weich) Add cuda event profiling
+
+    //TODO (weich) Wrap cuda even in class
+    cudaEvent_t start, end;
+    CHECK_CUDA(cudaEventCreate(&start));
+    CHECK_CUDA(cudaEventCreate(&end));
+
+    CHECK_CUDA(cudaEventRecord(start, stream));
     auto status = context->enqueue(batch_size, buffers, stream, /*cudaEvent_t*/ nullptr);
+    CHECK_CUDA(cudaEventRecord(end, stream)); 
+    CHECK_CUDA(cudaEventSynchronize(end));
+    float infertime;
+    CHECK_CUDA(cudaEventElapsedTime(&infertime, start, end));    
+
     if (!status) {
         std::cout << "context->enqueue fauld." << std::endl;
-        return false;
+        return -1;
     }
     CHECK_CUDA(cudaMemcpyAsync(output, output_buffer, output_size, cudaMemcpyDeviceToHost, stream));
     cudaStreamSynchronize(stream);
@@ -141,12 +152,12 @@ bool ImageInference::inference(size_t batch_size, DType* input, DType* output) {
     CHECK_CUDA(cudaFree(input_buffer));
     CHECK_CUDA(cudaFree(output_buffer));
 
-    return true;
+    return infertime;
 }
 
-template bool ImageInference::inference<float>(size_t batch_size, float* input, float* output);
+template float ImageInference::inference<float>(size_t batch_size, float* input, float* output);
  
-template bool ImageInference::inference<double>(size_t batch_size, double* input, double* output);
+template float ImageInference::inference<double>(size_t batch_size, double* input, double* output);
 
-template bool ImageInference::inference<int>(size_t batch_size, int* input, int* output);
+template float ImageInference::inference<int>(size_t batch_size, int* input, int* output);
 }// end trtInference namespace

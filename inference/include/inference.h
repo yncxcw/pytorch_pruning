@@ -39,8 +39,9 @@ public:
     bool build();
 
     //! \Run inference
+    // Return the inference time spent on TRT engine.
     template<typename DType>
-    bool inference(size_t batch_size, DType* input, DType* output);
+    float inference(size_t batch_size, DType* input, DType* output);
 
     //! \Return input size as H*W*C
     size_t model_input_size(){
