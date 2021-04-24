@@ -1,5 +1,6 @@
 #include "include/inference.h"
 
+#include "cuda_profiler_api.h"
 #include "cuda_runtime_api.h"
 
 #include <iostream>
@@ -134,7 +135,9 @@ float ImageInference::inference(size_t batch_size, DType* input, DType* output) 
     CHECK_CUDA(cudaEventCreate(&end));
 
     CHECK_CUDA(cudaEventRecord(start, stream));
+    CHECK_CUDA(cudaProfilerStart());
     auto status = context->enqueue(batch_size, buffers, stream, /*cudaEvent_t*/ nullptr);
+    CHECK_CUDA(cudaProfilerStop());
     CHECK_CUDA(cudaEventRecord(end, stream)); 
     CHECK_CUDA(cudaEventSynchronize(end));
     float infertime;

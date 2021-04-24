@@ -84,7 +84,7 @@ def _make_layers(config, batch_norm: bool=True) -> nn.Sequential:
 def vgg11_model_builder(num_classes: int=100, batch_norm: bool=True) -> nn.Module:
     return VGG(
         config={
-            "names": "vgg11",
+            "name": "vgg11",
             "params": VGG_CONFIG["vgg11"],
         },
         num_classes=num_classes,

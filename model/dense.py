@@ -65,7 +65,7 @@ def dense0_model_builder(num_classes: int=100, batch_norm: bool=True) -> torch.n
 def dense1_model_builder(num_classes: int=100, batch_norm: bool=True) -> torch.nn.Module:
     return Dense(
         config={
-            "name": "dense0",
+            "name": "dense1",
             "num_layers": 1,
         },
         num_classes=num_classes,
@@ -75,7 +75,7 @@ def dense1_model_builder(num_classes: int=100, batch_norm: bool=True) -> torch.n
 def dense10_model_builder(num_classes: int=100, batch_norm: bool=True) -> torch.nn.Module:
     return Dense(
         config={
-            "name": "dense0",
+            "name": "dense10",
             "num_layers": 10,
         },
         num_classes=num_classes,
