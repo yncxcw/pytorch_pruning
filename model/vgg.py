@@ -31,6 +31,7 @@ class VGG(nn.Module):
         self._name = config["name"]
         self._extractor = _make_layers(config["params"], batch_norm)
         self._classfier = nn.Sequential(
+            # If the image size is changed, the first input to Lindear layer needs to be updated
             nn.Linear(512, 4096),
             nn.ReLU(inplace=True),
             nn.Dropout(),
@@ -81,6 +82,7 @@ def _make_layers(config, batch_norm: bool=True) -> nn.Sequential:
     
     return nn.Sequential(*layers)
 
+
 def vgg11_model_builder(num_classes: int=100, batch_norm: bool=True) -> nn.Module:
     return VGG(
         config={
@@ -90,6 +92,7 @@ def vgg11_model_builder(num_classes: int=100, batch_norm: bool=True) -> nn.Modul
         num_classes=num_classes,
         batch_norm=batch_norm,
     )
+
 
 def vgg13_model_builder(num_classes: int=100, batch_norm: bool=True) -> nn.Module:
     return VGG(
@@ -101,6 +104,7 @@ def vgg13_model_builder(num_classes: int=100, batch_norm: bool=True) -> nn.Modul
         batch_norm=batch_norm,
     )
 
+
 def vgg16_model_builder(num_classes: int=100, batch_norm: bool=True) -> nn.Module:
     return VGG(
         config={
@@ -110,6 +114,7 @@ def vgg16_model_builder(num_classes: int=100, batch_norm: bool=True) -> nn.Modul
         num_classes=num_classes,
         batch_norm=batch_norm,
     )
+
 
 def vgg19_model_builder(num_classes: int=100, batch_norm: bool=True) -> nn.Module:
     return VGG(

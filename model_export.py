@@ -19,11 +19,12 @@ if __name__ == "__main__":
     model = model_builder(100, True).eval()
 
     onnx_path = os.path.join(args.output, "model-"+model.name()+".onnx")
+    
     mocked_input = torch.zeros([1] + model.input_shape(), dtype=torch.float32) 
     torch.onnx.export(
         model=model,
         args=mocked_input,
         f=onnx_path,
-        export_params=True
+        use_external_data_format=True,
     )
     print(f"Done with exporting {onnx_path}")
